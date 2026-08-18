@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
 
+use crate::math::{self, claimable};
+
 /// One token grant: linear vesting, optional cliff, optional creator revoke.
 ///
 /// PDA seeds: `[b"vesting", creator, id]`.
@@ -34,4 +36,35 @@ pub struct Vesting {
     pub vested_at_revoke: u64,
     /// Creator-chosen grant id. Part of the PDA seeds.
     pub id: [u8; 32],
+}
+
+impl Vesting {
+    /// Unlocked tokens at `now`. After revoke this is frozen at the snapshot.
+    pub fn currently_vested(&self, now: i64) -> u64 {
+        if self.revoked {
+            self.vested_at_revoke
+        } else {
+            math::vested_amount(
+                now,
+                self.start_ts,
+                self.cliff_ts,
+                self.end_ts,
+                self.total_amount,
+            )
+        }
+    }
+
+    /// Tokens the beneficiary may withdraw at `now`.
+    pub fn claimable_amount(&self, now: i64) -> u64 {
+        claimable(self.currently_vested(now), self.claimed_amount)
+    }
+
+    /// True when the beneficiary has taken every token they are still owed.
+    pub fn is_settled(&self) -> bool {
+        if self.revoked {
+            self.claimed_amount == self.vested_at_revoke
+        } else {
+            self.claimed_amount == self.total_amount
+        }
+    }
 }

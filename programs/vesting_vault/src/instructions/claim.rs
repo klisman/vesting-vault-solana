@@ -1,10 +1,14 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token_interface::{Mint, TokenAccount, TokenInterface},
+    token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked},
 };
 
-use crate::{constants::VESTING_SEED, error::VestingError, state::Vesting};
+use crate::{
+    constants::{vesting_signer_seeds, VESTING_SEED},
+    error::VestingError,
+    state::Vesting,
+};
 
 #[derive(Accounts)]
 pub struct Claim<'info> {
@@ -48,6 +52,39 @@ pub struct Claim<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handle_claim(_ctx: Context<Claim>) -> Result<()> {
-    err!(VestingError::NotYetImplemented)
+pub fn handle_claim(ctx: Context<Claim>) -> Result<()> {
+    let now = Clock::get()?.unix_timestamp;
+    let amount = ctx.accounts.vesting.claimable_amount(now);
+    require!(amount > 0, VestingError::NothingToClaim);
+
+    let bump = [ctx.accounts.vesting.bump];
+    let seeds = vesting_signer_seeds(
+        &ctx.accounts.vesting.creator,
+        &ctx.accounts.vesting.id,
+        &bump,
+    );
+
+    token_interface::transfer_checked(
+        CpiContext::new_with_signer(
+            ctx.accounts.token_program.key(),
+            TransferChecked {
+                from: ctx.accounts.vault.to_account_info(),
+                mint: ctx.accounts.mint.to_account_info(),
+                to: ctx.accounts.beneficiary_ata.to_account_info(),
+                authority: ctx.accounts.vesting.to_account_info(),
+            },
+            &[&seeds],
+        ),
+        amount,
+        ctx.accounts.mint.decimals,
+    )?;
+
+    ctx.accounts.vesting.claimed_amount = ctx
+        .accounts
+        .vesting
+        .claimed_amount
+        .checked_add(amount)
+        .ok_or(VestingError::MathOverflow)?;
+
+    Ok(())
 }

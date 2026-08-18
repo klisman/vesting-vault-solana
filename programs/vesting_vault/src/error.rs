@@ -2,12 +2,12 @@ use anchor_lang::prelude::*;
 
 #[error_code]
 pub enum VestingError {
-    #[msg("This instruction is stubbed and will be implemented in a later PR")]
-    NotYetImplemented,
     #[msg("start_ts must be <= cliff_ts and cliff_ts must be < end_ts")]
     InvalidSchedule,
     #[msg("total_amount must be greater than zero")]
     InvalidAmount,
+    #[msg("Creator token account does not hold enough to fund this grant")]
+    InsufficientFunds,
     #[msg("Nothing is claimable at this time")]
     NothingToClaim,
     #[msg("This grant is not revocable")]
@@ -22,4 +22,6 @@ pub enum VestingError {
     VaultNotEmpty,
     #[msg("Grant is not fully settled; cannot close")]
     GrantNotSettled,
+    #[msg("Arithmetic overflow")]
+    MathOverflow,
 }

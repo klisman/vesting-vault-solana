@@ -51,8 +51,11 @@ jobs:
       - name: Format
         run: cargo fmt --all -- --check
 
+      - name: Build
+        run: NO_DNA=1 anchor build --ignore-keys
+
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 
-      - name: Build
-        run: NO_DNA=1 anchor build
+      - name: Test
+        run: NO_DNA=1 cargo test
