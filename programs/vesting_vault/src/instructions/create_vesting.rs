@@ -1,12 +1,12 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token_interface::{Mint, TokenAccount, TokenInterface},
+    token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked},
 };
 
 use crate::{constants::VESTING_SEED, error::VestingError, state::Vesting};
 
-#[derive(AnchorSerialize, AnchorDeserialize)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CreateVestingParams {
     pub start_ts: i64,
     pub cliff_ts: i64,
@@ -61,9 +61,48 @@ pub struct CreateVesting<'info> {
 }
 
 pub fn handle_create_vesting(
-    _ctx: Context<CreateVesting>,
-    _id: [u8; 32],
-    _params: CreateVestingParams,
+    ctx: Context<CreateVesting>,
+    id: [u8; 32],
+    params: CreateVestingParams,
 ) -> Result<()> {
-    err!(VestingError::NotYetImplemented)
+    require!(params.total_amount > 0, VestingError::InvalidAmount);
+    require!(
+        params.start_ts <= params.cliff_ts && params.cliff_ts < params.end_ts,
+        VestingError::InvalidSchedule
+    );
+    require!(
+        ctx.accounts.creator_ata.amount >= params.total_amount,
+        VestingError::InsufficientFunds
+    );
+
+    let vesting = &mut ctx.accounts.vesting;
+    vesting.bump = ctx.bumps.vesting;
+    vesting.creator = ctx.accounts.creator.key();
+    vesting.beneficiary = ctx.accounts.beneficiary.key();
+    vesting.mint = ctx.accounts.mint.key();
+    vesting.total_amount = params.total_amount;
+    vesting.claimed_amount = 0;
+    vesting.start_ts = params.start_ts;
+    vesting.cliff_ts = params.cliff_ts;
+    vesting.end_ts = params.end_ts;
+    vesting.revocable = params.revocable;
+    vesting.revoked = false;
+    vesting.vested_at_revoke = 0;
+    vesting.id = id;
+
+    token_interface::transfer_checked(
+        CpiContext::new(
+            ctx.accounts.token_program.key(),
+            TransferChecked {
+                from: ctx.accounts.creator_ata.to_account_info(),
+                mint: ctx.accounts.mint.to_account_info(),
+                to: ctx.accounts.vault.to_account_info(),
+                authority: ctx.accounts.creator.to_account_info(),
+            },
+        ),
+        params.total_amount,
+        ctx.accounts.mint.decimals,
+    )?;
+
+    Ok(())
 }

@@ -2,7 +2,7 @@
 
 Time-locked SPL token grants on Solana: linear vesting, an optional cliff, and creator revoke.
 
-This repository is a work in progress. The on-chain program currently compiles with account layouts and instruction stubs; vesting math, tests, a web app, and a devnet deploy land in follow-up PRs.
+This repository is a work in progress. The on-chain program implements create, claim, revoke, and close. A web app and a live devnet deploy land in follow-up PRs.
 
 ## Stack
 
@@ -16,15 +16,19 @@ This repository is a work in progress. The on-chain program currently compiles w
 ## Build
 
 ```bash
-anchor build
+anchor build --ignore-keys
 ```
 
-Format and lint:
+## Test
 
 ```bash
 cargo fmt --all -- --check
+anchor build --ignore-keys
 cargo clippy --workspace --all-targets -- -D warnings
+cargo test
 ```
+
+`cargo test` needs a prior `anchor build` so LiteSVM can load `target/deploy/vesting_vault.so`.
 
 ## Program ID (localnet / planned devnet)
 
