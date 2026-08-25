@@ -37,7 +37,6 @@ solana-transaction = "3.0.2"
 solana-transaction-error = "3.0.0"
 spl-associated-token-account-interface = "2.0.0"
 spl-token-interface = "2.0.0"
-spl-token-2022-interface = "2.1.0"
 
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(target_os, values("solana"))'] }

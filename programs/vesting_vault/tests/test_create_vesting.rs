@@ -125,37 +125,3 @@ fn create_rejects_invalid_schedule() {
     );
     assert_anchor_error(res, VestingError::InvalidSchedule);
 }
-
-#[test]
-fn create_rejects_transfer_fee_mint() {
-    let (mut svm, program_id) = setup_svm();
-    let creator = Keypair::new();
-    let beneficiary = Keypair::new();
-    svm.airdrop(&creator.pubkey(), 10_000_000_000).unwrap();
-
-    let mint = Pubkey::new_unique();
-    harness::insert_transfer_fee_mint(&mut svm, mint, TOTAL);
-    let (vesting, _) = vesting_pda(&program_id, &creator.pubkey(), &GRANT_ID);
-    let vault = harness::ata_with_program(&vesting, &mint, &harness::TOKEN_2022_PROGRAM_ID);
-    let creator_ata =
-        harness::ata_with_program(&creator.pubkey(), &mint, &harness::TOKEN_2022_PROGRAM_ID);
-    harness::insert_token_2022_fee_account(&mut svm, creator_ata, mint, creator.pubkey(), TOTAL);
-
-    set_clock(&mut svm, START);
-    let res = send_ix(
-        &mut svm,
-        &creator,
-        harness::create_vesting_ix_with_token_program(
-            creator.pubkey(),
-            beneficiary.pubkey(),
-            mint,
-            vesting,
-            vault,
-            creator_ata,
-            GRANT_ID,
-            default_params(true),
-            harness::TOKEN_2022_PROGRAM_ID,
-        ),
-    );
-    assert_anchor_error(res, VestingError::TransferFeeNotSupported);
-}

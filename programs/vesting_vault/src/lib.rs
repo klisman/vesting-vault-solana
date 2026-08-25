@@ -3,7 +3,6 @@ pub mod error;
 pub mod instructions;
 pub mod math;
 pub mod state;
-pub mod token_ext;
 
 use anchor_lang::prelude::*;
 
