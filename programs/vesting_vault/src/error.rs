@@ -24,4 +24,8 @@ pub enum VestingError {
     GrantNotSettled,
     #[msg("Arithmetic overflow")]
     MathOverflow,
+    #[msg(
+        "Transfer-fee Token-2022 mints are not supported; vault accounting assumes 1:1 transfers"
+    )]
+    TransferFeeNotSupported,
 }

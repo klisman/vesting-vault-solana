@@ -25,6 +25,12 @@ pub struct CreateVesting<'info> {
     /// need to sign or exist as a system account at creation time.
     pub beneficiary: UncheckedAccount<'info>,
 
+    /// Rejected if the mint has Token-2022 `TransferFeeConfig`. Fee-on-transfer
+    /// would make `total_amount` diverge from the vault balance.
+    #[account(
+        constraint = !crate::token_ext::has_transfer_fee(&mint.to_account_info())
+            @ VestingError::TransferFeeNotSupported
+    )]
     pub mint: InterfaceAccount<'info, Mint>,
 
     /// Vesting grant PDA. Seeds: `["vesting", creator, id]`.

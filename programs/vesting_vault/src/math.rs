@@ -13,9 +13,9 @@ pub fn vested_amount(now: i64, start_ts: i64, cliff_ts: i64, end_ts: i64, total:
         return total;
     }
 
-    let elapsed = u128::from(u64::try_from(now.saturating_sub(start_ts)).unwrap_or(0));
-    let duration = match u64::try_from(end_ts.saturating_sub(start_ts)) {
-        Ok(d) if d > 0 => u128::from(d),
+    let elapsed = u128::try_from(i128::from(now) - i128::from(start_ts)).unwrap_or(0);
+    let duration = match u128::try_from(i128::from(end_ts) - i128::from(start_ts)) {
+        Ok(d) if d > 0 => d,
         _ => return total,
     };
 
@@ -84,5 +84,20 @@ mod tests {
         assert_eq!(vested, expected);
         assert!(vested > 0);
         assert!(vested < total);
+    }
+
+    #[test]
+    fn extreme_i64_schedule_does_not_saturate_duration() {
+        let start = i64::MIN;
+        let end = i64::MAX;
+        let now = 0;
+        let vested = vested_amount(now, start, start, end, TOTAL);
+        let elapsed = u128::try_from(i128::from(now) - i128::from(start)).unwrap();
+        let duration = u128::try_from(i128::from(end) - i128::from(start)).unwrap();
+        let expected = (u128::from(TOTAL) * elapsed / duration) as u64;
+        assert_eq!(vested, expected);
+        // i64 saturating subtraction would collapse duration to i64::MAX and
+        // report the grant as fully vested.
+        assert_ne!(vested, TOTAL);
     }
 }
