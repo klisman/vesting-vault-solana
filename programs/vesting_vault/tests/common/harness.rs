@@ -22,6 +22,7 @@ use anchor_lang::{
 use vesting_vault::{error::VestingError, CreateVestingParams};
 
 pub const TOKEN_PROGRAM_ID: Pubkey = spl_token_interface::ID;
+pub const TOKEN_2022_PROGRAM_ID: Pubkey = spl_token_2022_interface::ID;
 pub const ASSOCIATED_TOKEN_PROGRAM_ID: Pubkey = spl_associated_token_account_interface::program::ID;
 pub const GRANT_ID: [u8; 32] = [7u8; 32];
 pub const DECIMALS: u8 = 6;
@@ -63,7 +64,11 @@ pub fn vesting_pda(program_id: &Pubkey, creator: &Pubkey, id: &[u8; 32]) -> (Pub
 }
 
 pub fn ata(owner: &Pubkey, mint: &Pubkey) -> Pubkey {
-    get_associated_token_address_with_program_id(owner, mint, &TOKEN_PROGRAM_ID)
+    ata_with_program(owner, mint, &TOKEN_PROGRAM_ID)
+}
+
+pub fn ata_with_program(owner: &Pubkey, mint: &Pubkey, token_program: &Pubkey) -> Pubkey {
+    get_associated_token_address_with_program_id(owner, mint, token_program)
 }
 
 pub fn insert_mint(svm: &mut LiteSVM, mint: Pubkey, supply: u64) {
@@ -114,6 +119,101 @@ pub fn insert_token_account(
             lamports: 1_000_000_000,
             data,
             owner: TOKEN_PROGRAM_ID,
+            executable: false,
+            rent_epoch: 0,
+        },
+    )
+    .unwrap();
+}
+
+/// Token-2022 mint with a nonzero transfer fee (100 bps, uncapped).
+pub fn insert_transfer_fee_mint(svm: &mut LiteSVM, mint: Pubkey, supply: u64) {
+    use spl_token_2022_interface::{
+        extension::{
+            transfer_fee::{TransferFee, TransferFeeConfig},
+            BaseStateWithExtensionsMut, ExtensionType, PodStateWithExtensionsMut,
+        },
+        pod::{PodCOption, PodMint},
+        state::Mint as Token2022Mint,
+    };
+
+    let mint_len = ExtensionType::try_calculate_account_len::<Token2022Mint>(&[
+        ExtensionType::TransferFeeConfig,
+    ])
+    .unwrap();
+    let mut data = vec![0u8; mint_len];
+    let mut state = PodStateWithExtensionsMut::<PodMint>::unpack_uninitialized(&mut data).unwrap();
+    let fee = TransferFee {
+        epoch: 0.into(),
+        maximum_fee: u64::MAX.into(),
+        transfer_fee_basis_points: 100.into(),
+    };
+    let ext = state.init_extension::<TransferFeeConfig>(true).unwrap();
+    ext.older_transfer_fee = fee;
+    ext.newer_transfer_fee = fee;
+    *state.base = PodMint {
+        mint_authority: PodCOption::none(),
+        supply: supply.into(),
+        decimals: DECIMALS,
+        is_initialized: true.into(),
+        freeze_authority: PodCOption::none(),
+    };
+    state.init_account_type().unwrap();
+    svm.set_account(
+        mint,
+        Account {
+            lamports: 1_000_000_000,
+            data,
+            owner: TOKEN_2022_PROGRAM_ID,
+            executable: false,
+            rent_epoch: 0,
+        },
+    )
+    .unwrap();
+}
+
+/// Token-2022 account with the TransferFeeAmount extension required by fee mints.
+pub fn insert_token_2022_fee_account(
+    svm: &mut LiteSVM,
+    address: Pubkey,
+    mint: Pubkey,
+    owner: Pubkey,
+    amount: u64,
+) {
+    use spl_token_2022_interface::{
+        extension::{
+            transfer_fee::TransferFeeAmount, BaseStateWithExtensionsMut, ExtensionType,
+            PodStateWithExtensionsMut,
+        },
+        pod::{PodAccount, PodCOption},
+        state::Account as Token2022Account,
+    };
+
+    let account_len = ExtensionType::try_calculate_account_len::<Token2022Account>(&[
+        ExtensionType::TransferFeeAmount,
+    ])
+    .unwrap();
+    let mut data = vec![0u8; account_len];
+    let mut state =
+        PodStateWithExtensionsMut::<PodAccount>::unpack_uninitialized(&mut data).unwrap();
+    state.init_extension::<TransferFeeAmount>(true).unwrap();
+    *state.base = PodAccount {
+        mint,
+        owner,
+        amount: amount.into(),
+        delegate: PodCOption::none(),
+        state: AccountState::Initialized as u8,
+        is_native: PodCOption::none(),
+        delegated_amount: 0.into(),
+        close_authority: PodCOption::none(),
+    };
+    state.init_account_type().unwrap();
+    svm.set_account(
+        address,
+        Account {
+            lamports: 1_000_000_000,
+            data,
+            owner: TOKEN_2022_PROGRAM_ID,
             executable: false,
             rent_epoch: 0,
         },
@@ -179,6 +279,31 @@ pub fn create_vesting_ix(
     id: [u8; 32],
     params: CreateVestingParams,
 ) -> Instruction {
+    create_vesting_ix_with_token_program(
+        creator,
+        beneficiary,
+        mint,
+        vesting,
+        vault,
+        creator_ata,
+        id,
+        params,
+        TOKEN_PROGRAM_ID,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn create_vesting_ix_with_token_program(
+    creator: Pubkey,
+    beneficiary: Pubkey,
+    mint: Pubkey,
+    vesting: Pubkey,
+    vault: Pubkey,
+    creator_ata: Pubkey,
+    id: [u8; 32],
+    params: CreateVestingParams,
+    token_program: Pubkey,
+) -> Instruction {
     Instruction::new_with_bytes(
         vesting_vault::id(),
         &vesting_vault::instruction::CreateVesting { id, params }.data(),
@@ -189,7 +314,7 @@ pub fn create_vesting_ix(
             vesting,
             vault,
             creator_ata,
-            token_program: TOKEN_PROGRAM_ID,
+            token_program,
             associated_token_program: ASSOCIATED_TOKEN_PROGRAM_ID,
             system_program: anchor_lang::solana_program::system_program::ID,
         }
