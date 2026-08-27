@@ -59,3 +59,15 @@ jobs:
 
       - name: Test
         run: NO_DNA=1 cargo test
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.10"
+          cache: npm
+
+      - name: Install JavaScript dependencies
+        run: npm ci
+
+      - name: Integration tests
+        run: npm run test:integration

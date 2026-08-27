@@ -10,3 +10,5 @@ test-ledger
 .env
 .env.*
 !.env.example
+dist
+*.tsbuildinfo

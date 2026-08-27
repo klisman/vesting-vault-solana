@@ -1,0 +1,32 @@
+{
+  "name": "vesting-vault-solana",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "clients/ts"
+  ],
+  "scripts": {
+    "generate:client": "codama run js",
+    "test:integration": "vitest run --config vitest.config.surfpool.ts"
+  },
+  "engines": {
+    "node": ">=24.0"
+  },
+  "devDependencies": {
+    "@codama/nodes-from-anchor": "^1.5.5",
+    "@codama/renderers-js": "^2.4.0",
+    "@types/node": "^26.3.0",
+    "codama": "^1.10.2",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
+  },
+  "dependencies": {
+    "@solana-program/system": "^0.14.0",
+    "@solana-program/token": "^0.16.0",
+    "@solana/kit": "^8.0.0",
+    "@solana/kit-plugin-rpc": "^0.18.0",
+    "@solana/kit-plugin-signer": "^0.18.0",
+    "@solana/program-client-core": "^8.0.0",
+    "@solana/surfpool": "^1.5.0"
+  }
+}

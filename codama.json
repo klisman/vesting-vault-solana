@@ -1,0 +1,18 @@
+{
+  "idl": "target/idl/vesting_vault.json",
+  "before": [],
+  "scripts": {
+    "js": {
+      "from": "@codama/renderers-js",
+      "args": [
+        "clients/ts",
+        {
+          "dependencyVersions": {
+            "@solana/kit": "^8.0.0",
+            "@solana/program-client-core": "^8.0.0"
+          }
+        }
+      ]
+    }
+  }
+}
