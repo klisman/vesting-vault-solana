@@ -1,0 +1,22 @@
+{
+  "name": "@vesting-vault/client",
+  "version": "0.1.0",
+  "description": "Codama-generated Kit client for the vesting vault program",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./src/generated/index.ts",
+  "types": "./src/generated/index.ts",
+  "exports": {
+    ".": "./src/generated/index.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "@solana/kit": "^8.0.0"
+  },
+  "dependencies": {
+    "@solana/program-client-core": "^8.0.0"
+  }
+}
