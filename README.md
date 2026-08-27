@@ -13,7 +13,7 @@ flows. A web app and live devnet deploy land in follow-up PRs.
 | Anchor | 1.1.2 |
 | Solana CLI | 3.1.10 |
 | Rust | 1.89.0 (see `rust-toolchain.toml`) |
-| Node.js | >= 20.18 |
+| Node.js | >= 24.0 |
 
 ## Build
 
